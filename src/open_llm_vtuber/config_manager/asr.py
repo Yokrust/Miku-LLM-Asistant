@@ -203,13 +203,18 @@ class SherpaOnnxASRConfig(I18nMixin):
     tdnn_model: Optional[str] = Field(None, alias="tdnn_model")
     whisper_encoder: Optional[str] = Field(None, alias="whisper_encoder")
     whisper_decoder: Optional[str] = Field(None, alias="whisper_decoder")
+    whisper_language: Optional[str] = Field(None, alias="whisper_language")
+    whisper_task: Literal["transcribe", "translate"] = Field(
+        "transcribe", alias="whisper_task"
+    )
+    whisper_tail_paddings: int = Field(-1, alias="whisper_tail_paddings")
     sense_voice: Optional[str] = Field(None, alias="sense_voice")
     fire_red_asr_encoder: Optional[str] = Field(None, alias="fire_red_asr_encoder")
     fire_red_asr_decoder: Optional[str] = Field(None, alias="fire_red_asr_decoder")
     tokens: str = Field(..., alias="tokens")
     num_threads: int = Field(4, alias="num_threads")
     use_itn: bool = Field(True, alias="use_itn")
-    provider: Literal["cpu", "cuda", "rocm"] = Field("cpu", alias="provider")
+    provider: Literal["cpu", "cuda", "rocm", "coreml"] = Field("cpu", alias="provider")
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "model_type": Description(
@@ -239,6 +244,18 @@ class SherpaOnnxASRConfig(I18nMixin):
         "whisper_decoder": Description(
             en="Path to Whisper decoder model", zh="Whisper 解码器模型路径"
         ),
+        "whisper_language": Description(
+            en="Language code for Whisper models (e.g., 'es', 'en', 'zh'). Empty for auto-detect.",
+            zh="Whisper 模型的语言代码（如 'es'、'en'、'zh'），留空则自动检测。",
+        ),
+        "whisper_task": Description(
+            en="Task for Whisper models ('transcribe' or 'translate')",
+            zh="Whisper 模型的任务（'transcribe' 或 'translate'）",
+        ),
+        "whisper_tail_paddings": Description(
+            en="Tail padding frames for Whisper models (-1 for default)",
+            zh="Whisper 模型的尾部填充帧数（-1 表示默认）",
+        ),
         "sense_voice": Description(
             en="Path to SenseVoice model", zh="SenseVoice 模型路径"
         ),
@@ -254,8 +271,8 @@ class SherpaOnnxASRConfig(I18nMixin):
             en="Enable inverse text normalization", zh="启用反向文本归一化"
         ),
         "provider": Description(
-            en="Provider for inference (cpu or cuda) (cuda option needs additional settings. Please check our docs)",
-            zh="推理平台（cpu 或 cuda）(cuda 需要额外配置，请参考文档)",
+            en="Provider for inference (cpu, cuda, rocm, or coreml). 'coreml' uses Apple Neural Engine / GPU on macOS. cuda needs additional setup; please check our docs.",
+            zh="推理平台（cpu、cuda、rocm 或 coreml）。'coreml' 在 macOS 上使用 Apple 神经引擎 / GPU。cuda 需要额外配置，请参考文档。",
         ),
     }
 
