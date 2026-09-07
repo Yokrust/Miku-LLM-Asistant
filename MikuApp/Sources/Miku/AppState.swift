@@ -18,7 +18,7 @@ enum MikuStatus: Equatable {
         case .listening: return "Escuchando…"
         case .thinking: return "Pensando…"
         case .speaking: return "Hablando…"
-        case .dictating: return "Anotando lo que dices…"
+        case .dictating: return "Anotando lo que se hable…"
         case .muted: return "Silenciada"
         }
     }

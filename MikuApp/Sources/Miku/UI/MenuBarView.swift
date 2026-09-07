@@ -35,7 +35,7 @@ struct MenuBarView: View {
             }
             .disabled(miku.state.status == .disconnected || miku.dictating)
 
-            Button(miku.dictating ? "Terminar de anotar" : "Anotar lo que diga") {
+            Button(miku.dictating ? "Terminar de anotar" : "Escuchar y anotar") {
                 miku.toggleDictation()
             }
             .disabled(miku.state.status == .disconnected)
@@ -74,7 +74,7 @@ struct MenuBarView: View {
             }
             ScrollView {
                 Text(miku.state.dictationText.isEmpty
-                     ? "Habla y lo iré anotando."
+                     ? "Anotaré lo que se hable — la tuya o la de quien esté cerca."
                      : miku.state.dictationText)
                     .font(.caption)
                     .foregroundStyle(.secondary)

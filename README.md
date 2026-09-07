@@ -31,10 +31,12 @@ fan project.
 - **Live2D avatar** — a floating, transparent desktop-pet window with lip-sync
   and expressions; also reachable from the menu bar.
 - **Dictation and notes** — a second listening mode where Miku writes instead of
-  answering: speech is transcribed as you talk, stored with timestamps, and saved
-  as a Markdown note on request (Notion later, behind the same tools). Cuts on a
+  answering: speech in the room is transcribed as it's said, stored with
+  timestamps, and saved as a Markdown note on request (Notion later, behind the
+  same tools). It's room-listening, not just self-dictation — a lecture, a
+  meeting — so it picks up whoever is talking nearby, not only you. Cuts on a
   real speech-detection model (Silero VAD), not raw loudness, so background
-  noise — a café, a train — doesn't get mistaken for something you said.
+  noise — a café, a train — doesn't get mistaken for someone speaking.
 - **Offline-first speech** — speech recognition and synthesis run locally.
 - **Apple Silicon first** — targeted and tuned for macOS on M-series chips.
 
