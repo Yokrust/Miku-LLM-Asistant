@@ -1,5 +1,5 @@
-# ignore the user configuration file
-conf.yaml
+# conf.yaml IS tracked in this project — it's Miku's configuration, part of the product.
+# Secrets never go in it (they live in .env). Its runtime backup stays ignored (see below).
 
 # ignore non-default background images
 /backgrounds/*
@@ -73,6 +73,5 @@ conf.yaml.backup
 
 tmp/
 private/
-mcp_servers.json
 
 .vscode/
