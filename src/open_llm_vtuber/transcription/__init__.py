@@ -10,7 +10,7 @@ note is a separate, re-runnable step (see mcp_servers/notes_server.py).
 """
 
 from .models import Segment, SessionMeta
-from .segmenter import DictationSegmenter
+from .segmenter import DictationSegmenter, SileroSegmenter, build_segmenter
 from .service import DictationService
 from .store import TranscriptStore
 
@@ -19,5 +19,7 @@ __all__ = [
     "DictationService",
     "Segment",
     "SessionMeta",
+    "SileroSegmenter",
     "TranscriptStore",
+    "build_segmenter",
 ]

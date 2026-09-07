@@ -32,7 +32,9 @@ fan project.
   and expressions; also reachable from the menu bar.
 - **Dictation and notes** — a second listening mode where Miku writes instead of
   answering: speech is transcribed as you talk, stored with timestamps, and saved
-  as a Markdown note on request (Notion later, behind the same tools).
+  as a Markdown note on request (Notion later, behind the same tools). Cuts on a
+  real speech-detection model (Silero VAD), not raw loudness, so background
+  noise — a café, a train — doesn't get mistaken for something you said.
 - **Offline-first speech** — speech recognition and synthesis run locally.
 - **Apple Silicon first** — targeted and tuned for macOS on M-series chips.
 

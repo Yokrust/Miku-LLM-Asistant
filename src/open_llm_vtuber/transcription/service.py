@@ -20,7 +20,7 @@ from loguru import logger
 from ..asr.asr_factory import ASRFactory
 from ..asr.asr_interface import ASRInterface
 from .models import Segment, SessionMeta
-from .segmenter import AudioChunk, DictationSegmenter
+from .segmenter import AudioChunk, DictationSegmenter, SileroSegmenter, build_segmenter
 from .store import TranscriptSession, TranscriptStore
 
 # One dedicated engine per ASR model name, shared by every dictation session.
@@ -63,7 +63,7 @@ class DictationService:
         self._on_backlog = on_backlog
 
         self._session: Optional[TranscriptSession] = None
-        self._segmenter: Optional[DictationSegmenter] = None
+        self._segmenter: Optional[DictationSegmenter | SileroSegmenter] = None
         self._queue: Optional[asyncio.Queue] = None
         self._worker: Optional[asyncio.Task] = None
         self._next_index = 0
@@ -88,7 +88,7 @@ class DictationService:
         self._session = self._store.create(
             title=title, source=source, language=language
         )
-        self._segmenter = DictationSegmenter()
+        self._segmenter = build_segmenter()
         self._queue = asyncio.Queue()
         self._next_index = 0
         self._warned_backlog = False
