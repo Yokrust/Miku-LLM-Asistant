@@ -1,13 +1,16 @@
 # Ollama model for Miku's local brain.
-# Base: Qwen2.5 7B Instruct (strong Spanish + native tool-calling).
-# The only real change vs. stock is a much larger context window: the MCP tool
-# schemas (web search, etc.) plus Miku's persona overflow Ollama's default
-# num_ctx (2048), which silently truncates the tools and makes the model
-# hallucinate instead of calling them.
+# Base: Qwen2.5 3B Instruct. Benchmarked against 7B and qwen3:4b on this hardware:
+# 3B matched 7B's tool-call accuracy (4/4) at ~3x the speed; qwen3:4b's thinking
+# mode was far too slow and over-triggered tools. Swap FROM to qwen2.5:7b for more
+# quality at the cost of latency.
+#
+# num_ctx is raised from Ollama's default 2048: the MCP tool schemas (web search,
+# etc.) plus Miku's persona overflow it, which silently truncates the tools and
+# makes the model hallucinate instead of calling them.
 #
 # Build / rebuild:
 #   ollama create qwen2.5-miku -f Modelfile.miku
-FROM qwen2.5:7b
+FROM qwen2.5:3b
 
 PARAMETER num_ctx 8192
 PARAMETER temperature 0.8
