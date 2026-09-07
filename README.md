@@ -30,6 +30,9 @@ fan project.
   about what she sees.
 - **Live2D avatar** — a floating, transparent desktop-pet window with lip-sync
   and expressions; also reachable from the menu bar.
+- **Dictation and notes** — a second listening mode where Miku writes instead of
+  answering: speech is transcribed as you talk, stored with timestamps, and saved
+  as a Markdown note on request (Notion later, behind the same tools).
 - **Offline-first speech** — speech recognition and synthesis run locally.
 - **Apple Silicon first** — targeted and tuned for macOS on M-series chips.
 
@@ -38,11 +41,12 @@ fan project.
 ```
 ┌─────────────────────────────┐        ┌──────────────────────────────┐
 │  Miku.app  (SwiftUI, macOS) │        │  Backend  (Python, FastAPI)  │
-│  • menu bar + floating win  │  WS    │  • ASR (whisper.cpp, local)  │
+│  • menu bar + floating win  │  WS    │  • ASR (whisper, local)      │
 │  • Porcupine wake word      │◄──────►│  • Router agent (chat/task)  │
 │  • mic capture / playback   │        │  • TTS (piper, local)        │
-│  • WKWebView Live2D render   │        │  • MCP tool servers:         │
-│  • Local Action Server      │◄─HTTP──┤    macos / time / web-search │
+│  • dictation mode           │        │  • Dictation → transcripts/  │
+│  • WKWebView Live2D render  │        │  • MCP tool servers: macos / │
+│  • Local Action Server      │◄─HTTP──┤    time / web-search / notes │
 │    (allow-list + confirm)   │        └──────┬───────────────┬───────┘
 └─────────────────────────────┘               │               │
                                          Ollama (chat)    Claude (tasks,
@@ -56,6 +60,9 @@ fan project.
   router, and tool orchestration over MCP (Model Context Protocol).
 - **`mcp-macos`** — a thin MCP server that forwards tool calls from the LLM to
   Miku.app's local action server.
+- **`mcp-notes`** — reads the transcripts the backend wrote and saves notes. The
+  transcript is written without any model involved, so "write that down" works
+  even when the local model is too small to summarise well.
 
 ## Roadmap
 
@@ -68,6 +75,7 @@ Functionality first; the visual/design pass comes last.
 | M2  | macOS control tools (open apps/URLs, volume, media) driven from the backend |
 | M3  | Native app skeleton: menu bar, permissions, WebSocket client, audio |
 | M4  | Wake word (Porcupine "Miku") + session window |
+| N0  | Dictation: mic → transcript on disk → Markdown note (`notes` MCP server) |
 | M5  | Floating Live2D avatar window (WKWebView + pixi-live2d-display) |
 | M6  | Native macOS control + on-screen confirmation for powerful actions |
 | M7  | Camera / vision |

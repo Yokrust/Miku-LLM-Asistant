@@ -33,7 +33,16 @@ struct MenuBarView: View {
             Button(miku.talking ? "Terminar de hablar" : "Hablar con Miku") {
                 miku.toggleTalking()
             }
+            .disabled(miku.state.status == .disconnected || miku.dictating)
+
+            Button(miku.dictating ? "Terminar de anotar" : "Anotar lo que diga") {
+                miku.toggleDictation()
+            }
             .disabled(miku.state.status == .disconnected)
+
+            if miku.dictating || !miku.state.dictationText.isEmpty {
+                dictationPanel
+            }
 
             HStack(spacing: 6) {
                 TextField("Escríbele algo…", text: $draft)
@@ -52,6 +61,30 @@ struct MenuBarView: View {
         }
         .padding(14)
         .frame(width: 280)
+    }
+
+    /// Live view of the transcript. It grows a chunk behind the speaker, which is
+    /// expected: a piece is only transcribed once its pause has been heard.
+    private var dictationPanel: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if miku.state.dictationLagging {
+                Label("Transcribiendo con retraso…", systemImage: "clock.arrow.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            ScrollView {
+                Text(miku.state.dictationText.isEmpty
+                     ? "Habla y lo iré anotando."
+                     : miku.state.dictationText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .frame(height: 90)
+        }
+        .padding(8)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
     }
 
     private func sendDraft() {

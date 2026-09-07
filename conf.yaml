@@ -54,6 +54,13 @@ character_config:
       pausar / seguir / cambiar canción -> media_control
       qué apps hay abiertas         -> list_running_apps
       info actual (noticias, precios, resultados) -> search  (máx. 3 resultados)
+      guardar / apuntar / anotar algo -> save_note (título + contenido)
+      añadir a una nota que ya existe -> append_to_note
+      guardar lo dictado como nota    -> save_transcript_as_note
+      buscar en mis notas             -> search_notes
+      qué transcripciones hay         -> list_transcripts
+      leer lo que dicté               -> read_transcript
+    Una nota NUNCA se crea con open_path ni con run_shell: usa save_note.
     run_shell / run_applescript / run_shortcut: solo si nada de lo anterior sirve
     (a Yael le saldrá una ventana para aprobar). Cámara: aún no disponible.
     Tras una herramienta, confirma el resultado real en una frase.
@@ -85,7 +92,7 @@ character_config:
         # M1: time + ddg-search. M2: + macos (open apps/URLs, volume, media;
         # AppleScript/Shortcuts/shell behind a confirmation dialog).
         use_mcpp: True
-        mcp_enabled_servers: ["time", "ddg-search", "macos"] # see mcp_servers.json
+        mcp_enabled_servers: ["time", "ddg-search", "macos", "notes"] # see mcp_servers.json
 
       letta_agent:
         host: 'localhost' # Host address
@@ -278,7 +285,9 @@ character_config:
       # hotwords_score: 1.5   # Score for hotwords
       # modeling_unit: ''     # Modeling unit for hotwords (if applicable)
       # bpe_vocab: ''         # Path to BPE vocabulary (if applicable)
-      num_threads: 4 # Number of threads
+      # Benchmarked on M-series (whisper-small int8, es): 2 threads is the
+      # sweet spot — 4 and 8 are measurably slower (RTF 0.40 vs 0.43 vs 0.51).
+      num_threads: 2 # Number of threads
       # whisper_language: '' # Language for Whisper models (e.g., 'en', 'zh', etc. - if using Whisper)
       # whisper_task: 'transcribe'  # Task for Whisper models ('transcribe' or 'translate' - if using Whisper)
       # whisper_tail_paddings: -1   # Tail padding for Whisper models (if using Whisper)
@@ -290,6 +299,8 @@ character_config:
       use_itn: False # ITN is a SenseVoice-only feature; keep False for Whisper
       # Provider for inference: 'cpu', 'cuda', 'rocm', or 'coreml' ('coreml' uses Apple Neural Engine / GPU on macOS).
       # M0 starts on 'cpu' for a boring first run; switch to 'coreml' once the pipeline is verified.
+      # Measured, do not 'optimise' this to coreml: on this hardware CoreML is
+      # 2.5-3x SLOWER than CPU for whisper-small (RTF 1.15-1.43 vs 0.40-0.51).
       provider: 'cpu'
 
     groq_whisper_asr:

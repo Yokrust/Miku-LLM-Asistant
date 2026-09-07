@@ -79,3 +79,7 @@ private/
 # Swift / MikuApp build artifacts
 MikuApp/.build/
 MikuApp/build/
+
+# Lo que Miku escucha y anota: datos personales, nunca al repositorio.
+transcripts/
+notes/

@@ -8,6 +8,7 @@ enum MikuStatus: Equatable {
     case listening
     case thinking
     case speaking
+    case dictating
     case muted
 
     var label: String {
@@ -17,6 +18,7 @@ enum MikuStatus: Equatable {
         case .listening: return "Escuchando…"
         case .thinking: return "Pensando…"
         case .speaking: return "Hablando…"
+        case .dictating: return "Anotando lo que dices…"
         case .muted: return "Silenciada"
         }
     }
@@ -29,6 +31,7 @@ enum MikuStatus: Equatable {
         case .listening: return "circle.circle.fill"
         case .thinking: return "ellipsis.circle"
         case .speaking: return "waveform.circle.fill"
+        case .dictating: return "text.badge.plus"
         case .muted: return "circle.slash"
         }
     }
@@ -46,6 +49,34 @@ final class AppState {
     var lastTranscript: String = ""
     /// Last thing Miku said.
     var lastReply: String = ""
+
+    // MARK: Dictation
+    //
+    // Dictation is deliberately not part of the conversation: what is said here
+    // is transcribed and stored, and Miku does not answer it.
+
+    /// Id of the open session, or the last one that closed.
+    var dictationSessionId: String?
+    /// Transcribed pieces as they arrive, oldest first.
+    private(set) var dictationSegments: [String] = []
+    /// True while transcription is running behind the speaker.
+    var dictationLagging: Bool = false
+
+    var dictationText: String {
+        dictationSegments.joined(separator: " ")
+    }
+
+    func beginDictation(sessionId: String) {
+        dictationSessionId = sessionId
+        dictationSegments.removeAll()
+        dictationLagging = false
+    }
+
+    func addDictationSegment(_ text: String) {
+        dictationSegments.append(text)
+        dictationLagging = false
+    }
+
     /// Rolling log of the most recent backend events, for the Advanced section.
     private(set) var eventLog: [String] = []
 

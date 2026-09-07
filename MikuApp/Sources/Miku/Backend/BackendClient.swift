@@ -16,6 +16,14 @@ enum BackendEvent {
     case synthComplete
     /// A tool call changed state (running / completed / error).
     case toolStatus(name: String, status: String)
+    /// A dictation session opened; audio now goes to the transcript, not to Miku.
+    case dictationStarted(sessionId: String, title: String)
+    /// One transcribed piece of the dictation, in the order it was spoken.
+    case dictationSegment(text: String, start: Double)
+    /// The session closed and its queue drained. `sessionId` is nil if there was none.
+    case dictationStopped(sessionId: String?, segments: Int, text: String)
+    /// Transcription is falling behind the speaker. Nothing is lost, it just lags.
+    case dictationBacklog(Int)
     case status(String)
     case error(String)
 }
@@ -116,6 +124,28 @@ final class BackendClient: NSObject, @unchecked Sendable {
         case "backend-synth-complete":
             emit(.synthComplete)
 
+        case "dictation-started":
+            emit(.dictationStarted(
+                sessionId: object["session_id"] as? String ?? "",
+                title: object["title"] as? String ?? ""
+            ))
+
+        case "dictation-segment":
+            emit(.dictationSegment(
+                text: object["text"] as? String ?? "",
+                start: object["start"] as? Double ?? 0
+            ))
+
+        case "dictation-stopped":
+            emit(.dictationStopped(
+                sessionId: object["session_id"] as? String,
+                segments: object["segment_count"] as? Int ?? 0,
+                text: object["text"] as? String ?? ""
+            ))
+
+        case "dictation-backlog":
+            emit(.dictationBacklog(object["pending"] as? Int ?? 0))
+
         case "tool_call_status":
             emit(.toolStatus(name: object["tool_name"] as? String ?? "?",
                              status: object["status"] as? String ?? "?"))
@@ -155,6 +185,23 @@ final class BackendClient: NSObject, @unchecked Sendable {
     /// Tell the backend the utterance is over and it should start transcribing.
     func sendMicEnd() {
         send(["type": "mic-audio-end"])
+    }
+
+    // MARK: Dictation
+    //
+    // A separate channel on purpose: dictation audio must never reach the
+    // conversation buffer, or Miku would answer everything being dictated.
+
+    func startDictation(title: String) {
+        send(["type": "start-dictation", "text": title, "action": "mic"])
+    }
+
+    func sendDictationChunk(_ samples: [Float]) {
+        send(["type": "dictation-audio-data", "audio": samples])
+    }
+
+    func stopDictation() {
+        send(["type": "stop-dictation"])
     }
 
     func sendPlaybackComplete() {

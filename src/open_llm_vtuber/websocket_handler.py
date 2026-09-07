@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Callable, TypedDict
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 import json
+import os
 from enum import Enum
 import numpy as np
 from loguru import logger
@@ -22,6 +23,8 @@ from .chat_history_manager import (
     get_history_list,
 )
 from .config_manager.utils import scan_config_alts_directory, scan_bg_directory
+from .transcription import DictationService, TranscriptStore
+from .transcription.service import get_dictation_engine
 from .conversations.conversation_handler import (
     handle_conversation_trigger,
     handle_group_interrupt,
@@ -42,7 +45,8 @@ class MessageType(Enum):
     CONVERSATION = ["mic-audio-end", "text-input", "ai-speak-signal"]
     CONFIG = ["fetch-configs", "switch-config"]
     CONTROL = ["interrupt-signal", "audio-play-start"]
-    DATA = ["mic-audio-data"]
+    DICTATION = ["start-dictation", "stop-dictation"]
+    DATA = ["mic-audio-data", "dictation-audio-data"]
 
 
 class WSMessage(TypedDict, total=False):
@@ -69,6 +73,11 @@ class WebSocketHandler:
         self.current_conversation_tasks: Dict[str, Optional[asyncio.Task]] = {}
         self.default_context_cache = default_context_cache
         self.received_data_buffers: Dict[str, np.ndarray] = {}
+        # Dictation runs beside the conversation, one session per client.
+        self.transcript_store = TranscriptStore(
+            os.environ.get("MIKU_TRANSCRIPTS_DIR", "transcripts")
+        )
+        self.dictation_services: Dict[str, DictationService] = {}
 
         # Message handlers mapping
         self._message_handlers = self._init_message_handlers()
@@ -85,6 +94,9 @@ class WebSocketHandler:
             "delete-history": self._handle_delete_history,
             "interrupt-signal": self._handle_interrupt,
             "mic-audio-data": self._handle_audio_data,
+            "start-dictation": self._handle_start_dictation,
+            "dictation-audio-data": self._handle_dictation_audio_data,
+            "stop-dictation": self._handle_stop_dictation,
             "mic-audio-end": self._handle_conversation_trigger,
             "raw-audio-data": self._handle_raw_audio_data,
             "text-input": self._handle_conversation_trigger,
@@ -297,6 +309,11 @@ class WebSocketHandler:
             send_group_update=self.send_group_update,
         )
 
+        # A dictation session in flight would otherwise keep its worker alive.
+        dictation = self.dictation_services.pop(client_uid, None)
+        if dictation:
+            await dictation.cancel()
+
         # Clean up other client data
         self.client_connections.pop(client_uid, None)
         self.client_contexts.pop(client_uid, None)
@@ -317,6 +334,9 @@ class WebSocketHandler:
 
     async def _cleanup_failed_connection(self, client_uid: str) -> None:
         """Clean up failed connection data"""
+        dictation = self.dictation_services.pop(client_uid, None)
+        if dictation:
+            await dictation.cancel()
         self.client_connections.pop(client_uid, None)
         self.client_contexts.pop(client_uid, None)
         self.received_data_buffers.pop(client_uid, None)
@@ -509,6 +529,103 @@ class WebSocketHandler:
                     await websocket.send_text(
                         json.dumps({"type": "control", "text": "mic-audio-end"})
                     )
+
+    async def _handle_start_dictation(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
+        """Open a dictation session: audio is transcribed, not answered."""
+        context = self.client_contexts[client_uid]
+        asr_config = context.character_config.asr_config
+
+        service = self.dictation_services.get(client_uid)
+        if service is None:
+            engine = await get_dictation_engine(asr_config)
+
+            async def on_segment(segment) -> None:
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "dictation-segment",
+                            "index": segment.index,
+                            "start": segment.start,
+                            "end": segment.end,
+                            "text": segment.text,
+                        }
+                    )
+                )
+
+            async def on_backlog(pending: int) -> None:
+                await websocket.send_text(
+                    json.dumps({"type": "dictation-backlog", "pending": pending})
+                )
+
+            service = DictationService(
+                engine=engine,
+                store=self.transcript_store,
+                on_segment=on_segment,
+                on_backlog=on_backlog,
+            )
+            self.dictation_services[client_uid] = service
+
+        language = getattr(
+            getattr(asr_config, asr_config.asr_model, None), "whisper_language", ""
+        )
+        meta = await service.start(
+            title=data.get("text", "") or "",
+            source=data.get("action", "mic") or "mic",
+            language=language or "",
+        )
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "dictation-started",
+                    "session_id": meta.id,
+                    "title": meta.title,
+                }
+            )
+        )
+
+    async def _handle_dictation_audio_data(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
+        """Audio for the dictation session. Never reaches the conversation buffer."""
+        service = self.dictation_services.get(client_uid)
+        if not service or not service.active:
+            return
+        audio_data = data.get("audio", [])
+        if audio_data:
+            await service.feed(np.array(audio_data, dtype=np.float32))
+
+    async def _handle_stop_dictation(
+        self, websocket: WebSocket, client_uid: str, data: WSMessage
+    ) -> None:
+        """Close the session and wait for the queue to drain before answering."""
+        service = self.dictation_services.get(client_uid)
+        if not service or not service.active:
+            await websocket.send_text(
+                json.dumps({"type": "dictation-stopped", "session_id": None})
+            )
+            return
+
+        meta = await service.stop()
+        if meta is None:
+            await websocket.send_text(
+                json.dumps({"type": "dictation-stopped", "session_id": None})
+            )
+            return
+
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "dictation-stopped",
+                    "session_id": meta.id,
+                    "title": meta.title,
+                    "segment_count": meta.segment_count,
+                    "audio_seconds": meta.audio_seconds,
+                    "text": self.transcript_store.read_text(meta.id),
+                }
+            )
+        )
 
     async def _handle_conversation_trigger(
         self, websocket: WebSocket, client_uid: str, data: WSMessage

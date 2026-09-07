@@ -2,15 +2,34 @@
   "mcp_servers": {
     "time": {
       "command": "uvx",
-      "args": ["mcp-server-time", "--local-timezone=America/Hermosillo"]
+      "args": [
+        "mcp-server-time",
+        "--local-timezone=America/Hermosillo"
+      ]
     },
     "ddg-search": {
       "command": "uvx",
-      "args": ["duckduckgo-mcp-server"]
+      "args": [
+        "duckduckgo-mcp-server"
+      ]
     },
     "macos": {
       "command": "uv",
-      "args": ["run", "--no-sync", "python", "mcp_servers/macos_server.py"]
+      "args": [
+        "run",
+        "--no-sync",
+        "python",
+        "mcp_servers/macos_server.py"
+      ]
+    },
+    "notes": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--no-sync",
+        "python",
+        "mcp_servers/notes_server.py"
+      ]
     }
   }
 }
