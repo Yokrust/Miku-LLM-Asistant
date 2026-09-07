@@ -75,3 +75,7 @@ tmp/
 private/
 
 .vscode/
+
+# Swift / MikuApp build artifacts
+MikuApp/.build/
+MikuApp/build/
