@@ -55,7 +55,10 @@ def _confirm(action_title: str, detail: str) -> bool:
     This is the M2 stand-in for the confirmation UI that will live in Miku.app.
     """
     if _NO_CONFIRM:
-        print(f"[macos] MIKU_MACOS_NO_CONFIRM=1 -> auto-approving: {action_title}", file=sys.stderr)
+        print(
+            f"[macos] MIKU_MACOS_NO_CONFIRM=1 -> auto-approving: {action_title}",
+            file=sys.stderr,
+        )
         return True
 
     shown = detail if len(detail) <= 600 else detail[:600] + "\n…(truncado)"
@@ -93,10 +96,18 @@ def open_app(name: str) -> str:
 def open_url(url: str) -> str:
     """Open a URL in the default browser. Only http(s) and mailto are allowed."""
     url = url.strip()
-    if not (url.startswith("http://") or url.startswith("https://") or url.startswith("mailto:")):
+    if not (
+        url.startswith("http://")
+        or url.startswith("https://")
+        or url.startswith("mailto:")
+    ):
         return _err("only http, https and mailto URLs are allowed")
     proc = _run(["open", url])
-    return f"Abrí {url}." if proc.returncode == 0 else _err(proc.stderr.strip() or "open failed")
+    return (
+        f"Abrí {url}."
+        if proc.returncode == 0
+        else _err(proc.stderr.strip() or "open failed")
+    )
 
 
 @mcp.tool()
@@ -106,7 +117,11 @@ def open_path(path: str) -> str:
     if not os.path.exists(path):
         return _err(f"path does not exist: {path}")
     proc = _run(["open", path])
-    return f"Abrí {path}." if proc.returncode == 0 else _err(proc.stderr.strip() or "open failed")
+    return (
+        f"Abrí {path}."
+        if proc.returncode == 0
+        else _err(proc.stderr.strip() or "open failed")
+    )
 
 
 @mcp.tool()
@@ -126,7 +141,7 @@ def list_running_apps() -> str:
 def focus_app(name: str) -> str:
     """Bring an already-running application to the front, e.g. "Safari"."""
     name = name.strip()
-    ok, out = _osascript(f'tell application {json.dumps(name)} to activate')
+    ok, out = _osascript(f"tell application {json.dumps(name)} to activate")
     return f"Puse {name} al frente." if ok else _err(out)
 
 
@@ -134,8 +149,8 @@ def focus_app(name: str) -> str:
 def get_volume() -> str:
     """Get the current system output volume (0-100) and mute state."""
     ok, out = _osascript(
-        'set v to output volume of (get volume settings)\n'
-        'set m to output muted of (get volume settings)\n'
+        "set v to output volume of (get volume settings)\n"
+        "set m to output muted of (get volume settings)\n"
         'return (v as string) & "|" & (m as string)'
     )
     if not ok:
@@ -215,11 +230,16 @@ def run_shortcut(name: str, shortcut_input: str = "") -> str:
         return _err("empty shortcut name")
     if not shutil.which("shortcuts"):
         return _err("the 'shortcuts' CLI is not available")
-    if not _confirm("Ejecutar Atajo (Shortcut)", name + (f"\nEntrada: {shortcut_input}" if shortcut_input else "")):
+    if not _confirm(
+        "Ejecutar Atajo (Shortcut)",
+        name + (f"\nEntrada: {shortcut_input}" if shortcut_input else ""),
+    ):
         return "El usuario no autorizó la acción."
     args = ["shortcuts", "run", name]
     inp = shortcut_input if shortcut_input else None
-    proc = subprocess.run(args, input=inp, capture_output=True, text=True, timeout=60, check=False)
+    proc = subprocess.run(
+        args, input=inp, capture_output=True, text=True, timeout=60, check=False
+    )
     if proc.returncode == 0:
         return proc.stdout.strip() or f"Ejecuté el atajo '{name}'."
     return _err(proc.stderr.strip() or f"shortcut '{name}' failed")

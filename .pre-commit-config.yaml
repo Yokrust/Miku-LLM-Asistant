@@ -1,9 +1,10 @@
+# Keep `rev` in sync with the ruff version pinned in uv.lock and with
+# RUFF_VERSION in .github/workflows/ruff.yml. Three different ruff versions
+# across lock / hook / CI is how "passes locally, fails in CI" happens.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.6
+    rev: v0.14.14
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
-
-        

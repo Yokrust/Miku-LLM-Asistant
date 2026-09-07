@@ -1,8 +1,28 @@
 name: Ruff
-on: [ push, pull_request ]
+
+on: [push, pull_request]
+
+# Ruff is PINNED on purpose. Left unpinned, the action installs the newest ruff,
+# whose default rule set drifts ahead of the version this project develops
+# against — CI then fails on code that passes `uv run ruff check .` locally.
+# Keep RUFF_VERSION in sync with the ruff pinned in uv.lock.
+env:
+  RUFF_VERSION: "0.14.14"
+
 jobs:
   ruff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/ruff-action@v3
+
+      - name: Lint
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: ${{ env.RUFF_VERSION }}
+          args: check
+
+      - name: Format check
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: ${{ env.RUFF_VERSION }}
+          args: format --check
