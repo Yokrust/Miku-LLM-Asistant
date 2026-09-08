@@ -5,7 +5,11 @@
 // pixels rather than a live 3D scene: no Metal work per frame, and the composition
 // stays exactly what was approved in Figma.
 //
-//   swift MikuApp/Scripts/render-miku.swift <modelo.usdz> <carpeta-destino>
+//   swift MikuApp/Scripts/render-miku.swift <modelo.usdz> <carpeta-destino> [textura.jpg]
+//
+// The optional third argument swaps the baked texture at load time. That is how the
+// closed-eye pose gets made: her eyes are painted into the texture, not modelled, so
+// repainting that one image is the whole job — see Modelo/textura/README.md.
 
 import AppKit
 import SceneKit
@@ -17,6 +21,7 @@ guard args.count >= 3 else {
 }
 let modelo = URL(fileURLWithPath: args[1])
 let destino = URL(fileURLWithPath: args[2])
+let texturaAlternativa = args.count >= 4 ? URL(fileURLWithPath: args[3]) : nil
 
 let escena: SCNScene
 do { escena = try SCNScene(url: modelo, options: [.checkConsistency: true]) }
@@ -27,6 +32,20 @@ let (minimo, maximo) = raiz.boundingBox
 let alto = maximo.y - minimo.y
 let centro = SCNVector3((minimo.x + maximo.x) / 2, (minimo.y + maximo.y) / 2, (minimo.z + maximo.z) / 2)
 print("caja: \(minimo) … \(maximo)   alto=\(alto)")
+
+if let texturaAlternativa {
+    guard let reemplazo = NSImage(contentsOf: texturaAlternativa) else {
+        FileHandle.standardError.write("no se pudo leer la textura\n".data(using: .utf8)!); exit(1)
+    }
+    var aplicadas = 0
+    raiz.enumerateHierarchy { nodo, _ in
+        for material in nodo.geometry?.materials ?? [] {
+            material.diffuse.contents = reemplazo
+            aplicadas += 1
+        }
+    }
+    print("textura sustituida en \(aplicadas) material(es)")
+}
 
 // Transparent background: the aura is drawn by SwiftUI underneath, not baked in.
 escena.background.contents = NSColor.clear
