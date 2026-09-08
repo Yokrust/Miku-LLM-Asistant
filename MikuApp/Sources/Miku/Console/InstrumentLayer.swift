@@ -23,12 +23,12 @@ struct InstrumentLayer: View {
     var body: some View {
         Canvas { contexto, tamano in
             let sutil = esquema == .dark
-                ? Color.white.opacity(0.12) : Color(red: 0.04, green: 0.08, blue: 0.09).opacity(0.10)
+                ? Color.white.opacity(0.17) : Color(red: 0.04, green: 0.08, blue: 0.09).opacity(0.12)
             let fuerte = esquema == .dark
-                ? Color.white.opacity(0.22) : Color(red: 0.04, green: 0.08, blue: 0.09).opacity(0.20)
+                ? Color.white.opacity(0.30) : Color(red: 0.04, green: 0.08, blue: 0.09).opacity(0.22)
             let acento = Color(red: 0.224, green: 0.773, blue: 0.733)
 
-            retícula(contexto, tamano, color: sutil.opacity(0.35))
+            retícula(contexto, tamano, color: sutil.opacity(0.42))
 
             // The instrument is centred on Miku, not on the window: she is recentred
             // when the sidebar covers the canvas, and so is everything drawn around her.

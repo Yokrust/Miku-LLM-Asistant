@@ -210,6 +210,11 @@ struct BotonMiku: ButtonStyle {
 /// her eyes closed. Until that PNG lands this draws her aura and silhouette, so the
 /// composition, the recentring and the capsule can be judged for real.
 struct MikuRender: View {
+    /// Framing knobs. The cover crops her around mid-thigh at the window's bottom
+    /// edge; these are the two numbers to turn if that crop needs moving.
+    static let alto: CGFloat = 830
+    static let desplazamiento: CGFloat = 235
+
     let estado: MikuStatus
     @Environment(\.accessibilityReduceMotion) private var menosMovimiento
 
@@ -223,22 +228,24 @@ struct MikuRender: View {
             ZStack {
                 RadialGradient(
                     colors: [
-                        MikuColor.acentoRelleno.opacity(estado == .muted ? 0.10 : 0.30),
+                        MikuColor.acentoRelleno.opacity(estado == .muted ? 0.16 : 0.42),
+                        MikuColor.acentoRelleno.opacity(estado == .muted ? 0.05 : 0.14),
                         MikuColor.acentoRelleno.opacity(0),
                     ],
-                    center: .center, startRadius: 10, endRadius: 300
+                    center: .center, startRadius: 40, endRadius: 330
                 )
-                .frame(width: 620, height: 620)
+                .frame(width: 660, height: 660)
                 .scaleEffect(respiro)
-                .blur(radius: 30)
+                .blur(radius: 44)
+                .offset(y: -120)
 
                 if let imagen = NSImage(named: "MikuRender") {
-                    Image(nsImage: imagen).resizable().scaledToFit().frame(height: 620)
+                    Image(nsImage: imagen).resizable().scaledToFit().frame(height: Self.alto)
                 } else {
                     marcador
                 }
             }
-            .offset(y: 90)
+            .offset(y: Self.desplazamiento)
         }
     }
 
