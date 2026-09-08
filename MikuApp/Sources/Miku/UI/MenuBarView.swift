@@ -24,11 +24,16 @@ struct MenuBarView: View {
 
             Divider()
 
-            Toggle("Escuchar", isOn: Binding(
+            Toggle("Escuchar siempre", isOn: Binding(
                 get: { miku.state.listeningEnabled },
                 set: { miku.setListening($0) }
             ))
             .toggleStyle(.switch)
+            .disabled(miku.state.status == .disconnected)
+
+            if miku.listening {
+                gatePanel
+            }
 
             Button(miku.talking ? "Terminar de hablar" : "Hablar con Miku") {
                 miku.toggleTalking()
@@ -54,6 +59,8 @@ struct MenuBarView: View {
 
             Divider()
 
+            Button("Abrir la Consola") { openWindow(id: "console") }
+                .keyboardShortcut("0", modifiers: .command)
             Button("Ajustes…") { openWindow(id: "settings") }
                 .keyboardShortcut(",", modifiers: .command)
             Button("Salir de Miku") { NSApplication.shared.terminate(nil) }
@@ -61,6 +68,34 @@ struct MenuBarView: View {
         }
         .padding(14)
         .frame(width: 280)
+    }
+
+    /// What the open mic is doing: whose voice it will obey, and what it made of
+    /// the last thing it heard. A blocked turn is silent by design, so without
+    /// this the user would have no way to tell "she ignored me" from "she did
+    /// not believe it was me".
+    private var gatePanel: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if miku.state.voiceIdActive {
+                Label("Solo obedece tu voz", systemImage: "checkmark.shield")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Label("Sin voz inscrita: obedece a cualquiera", systemImage: "exclamationmark.shield")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            if let gate = miku.state.lastGate, !gate.message.isEmpty {
+                Text(gate.message)
+                    .font(.caption)
+                    .foregroundStyle(gate.allowed ? Color.secondary : Color.orange)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
     }
 
     /// Live view of the transcript. It grows a chunk behind the speaker, which is

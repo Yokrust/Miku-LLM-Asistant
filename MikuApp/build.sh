@@ -20,6 +20,16 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Miku"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
+# Fonts and artwork ride inside the bundle. Geist and IBM Plex Mono are the
+# interface, not a system dependency, so they ship with it.
+[ -d Resources/Fonts ]  && cp -R Resources/Fonts  "$APP/Contents/Resources/Fonts"
+[ -d Resources/Assets ] && cp -R Resources/Assets/. "$APP/Contents/Resources/"
+
+# Menu bar icon (1x/2x/3x) and the Finder icon. Loose files, not an asset catalog:
+# AppKit resolves the @2x suffixes on its own, and this way there is no Xcode in the
+# loop. Regenerate them from the SVG with:  python3 Scripts/make-icons.py
+cp Resources/Assets/MenuBarIcon*.png Resources/Assets/Miku.icns "$APP/Contents/Resources/"
+
 # Ad-hoc signature. Enough for local development; a Developer ID is only needed
 # to distribute the app to other machines.
 echo "▸ firmando (ad-hoc)…"

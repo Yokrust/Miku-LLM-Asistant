@@ -24,6 +24,11 @@ enum BackendEvent {
     case dictationStopped(sessionId: String?, segments: Int, text: String)
     /// Transcription is falling behind the speaker. Nothing is lost, it just lags.
     case dictationBacklog(Int)
+    /// The open mic is up. `voiceId` is false until a voice has been enrolled.
+    case listeningStarted(wakeWord: Bool, voiceId: Bool, sessionSeconds: Double)
+    case listeningStopped(reason: String)
+    /// Verdict on one utterance heard through the open mic.
+    case voiceGate(GateFeedback)
     case status(String)
     case error(String)
 }
@@ -146,6 +151,28 @@ final class BackendClient: NSObject, @unchecked Sendable {
         case "dictation-backlog":
             emit(.dictationBacklog(object["pending"] as? Int ?? 0))
 
+        case "listening-started":
+            emit(.listeningStarted(
+                wakeWord: object["wake_word"] as? Bool ?? false,
+                voiceId: object["voice_id"] as? Bool ?? false,
+                sessionSeconds: object["session_seconds"] as? Double ?? 0
+            ))
+
+        case "listening-stopped":
+            emit(.listeningStopped(reason: object["reason"] as? String ?? ""))
+
+        case "voice-gate":
+            emit(.voiceGate(GateFeedback(
+                outcome: object["outcome"] as? String ?? "",
+                allowed: object["allowed"] as? Bool ?? false,
+                toolsAllowed: object["tools_allowed"] as? Bool ?? false,
+                heard: object["heard"] as? String ?? "",
+                command: object["command"] as? String ?? "",
+                score: object["score"] as? Double,
+                threshold: object["threshold"] as? Double,
+                detail: object["detail"] as? String ?? ""
+            )))
+
         case "tool_call_status":
             emit(.toolStatus(name: object["tool_name"] as? String ?? "?",
                              status: object["status"] as? String ?? "?"))
@@ -202,6 +229,29 @@ final class BackendClient: NSObject, @unchecked Sendable {
 
     func stopDictation() {
         send(["type": "stop-dictation"])
+    }
+
+    // MARK: Open mic
+    //
+    // A third channel, for the same reason dictation has its own: this audio is
+    // not an utterance the user chose to send. Most of it is the room. The
+    // backend cuts it on silence and answers only what was addressed to Miku.
+
+    func startListening() {
+        send(["type": "start-listening"])
+    }
+
+    func sendListeningChunk(_ samples: [Float]) {
+        send(["type": "listening-audio-data", "audio": samples])
+    }
+
+    func stopListening() {
+        send(["type": "stop-listening"])
+    }
+
+    /// Carry the user's verdict on a guarded action back to the backend.
+    func sendConfirmacion(id: String, permitir: Bool) {
+        send(["type": "action-confirmation", "id": id, "allow": permitir])
     }
 
     func sendPlaybackComplete() {

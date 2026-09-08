@@ -5,8 +5,10 @@ import Observation
 /// Wires the backend connection, the microphone and the speaker together, and
 /// keeps `AppState` in sync so the UI only ever reads state.
 ///
-/// M3 has no wake word yet: talking is push-to-talk from the menu bar. M4 replaces
-/// `beginTalking()` / `endTalking()` with Porcupine detecting the word "Miku".
+/// Three ways in, and they never share the microphone at once:
+///   push-to-talk  the button; the backend still checks whose voice it was
+///   open mic      streams continuously, backend wakes on "Miku" from the owner
+///   dictation     transcribed and filed, never answered
 @MainActor
 @Observable
 final class MikuController {
@@ -20,6 +22,7 @@ final class MikuController {
     private let chunkSize = 4096
     private var isTalking = false
     private var isDictating = false
+    private var isListening = false
 
     init(state: AppState) {
         self.state = state
@@ -63,7 +66,7 @@ final class MikuController {
             state.status = .disconnected
             state.log("Sin conexión")
         case .startMic:
-            break // M3 is push-to-talk; the backend's auto-start is ignored for now.
+            break // The app decides when the microphone opens, not the backend.
         case .conversationStarted:
             state.status = .thinking
         case .conversationEnded:
@@ -94,6 +97,27 @@ final class MikuController {
             if state.status == .dictating { state.status = restingStatus }
         case .dictationBacklog:
             state.dictationLagging = true
+        case .listeningStarted(let wakeWord, let voiceId, _):
+            state.wakeWordActive = wakeWord
+            state.voiceIdActive = voiceId
+            state.log(voiceId
+                ? "Micrófono abierto — despierta con «Miku», solo tu voz"
+                : "Micrófono abierto — despierta con «Miku» (sin voz inscrita: cualquiera puede)")
+        case .listeningStopped(let reason):
+            state.wakeWordActive = false
+            if !reason.isEmpty { state.log("Micrófono cerrado: \(reason)") }
+        case .voiceGate(let feedback):
+            state.lastGate = feedback
+            // "No me hablaban" is the common case in a room full of people. It is
+            // not worth a log line each time, and it is not worth telling the user.
+            if feedback.outcome != "no me hablaban" {
+                state.log(feedback.message)
+            }
+            if feedback.allowed {
+                state.status = .thinking
+            } else if isListening, state.status == .idle || state.status == .awake {
+                state.status = state.listeningEnabled ? .idle : .muted
+            }
         case .status(let text):
             state.log(text)
         case .error(let message):
@@ -187,6 +211,48 @@ final class MikuController {
         if isDictating { stopDictation() } else { startDictation() }
     }
 
+    // MARK: - Open mic
+
+    var listening: Bool { isListening }
+
+    /// Stream the microphone continuously and let the backend decide what was
+    /// meant for Miku. Returns false if the microphone is unavailable.
+    @discardableResult
+    func startListening() -> Bool {
+        guard !isListening, state.status != .disconnected else { return false }
+        guard AudioCapture.permissionGranted else {
+            Task { _ = await AudioCapture.requestPermission() }
+            return false
+        }
+        if isTalking { endTalking() }
+        if isDictating { stopDictation() }
+        pendingSamples.removeAll()
+
+        // Open the session before the microphone, as with dictation: audio that
+        // arrives before the backend has somewhere to put it is dropped.
+        client.startListening()
+        do {
+            try capture.start()
+            isListening = true
+            state.status = .idle
+            return true
+        } catch {
+            client.stopListening()
+            state.log("No se pudo abrir el micrófono: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    func stopListening() {
+        guard isListening else { return }
+        capture.stop()
+        flushSamples()
+        isListening = false
+        state.wakeWordActive = false
+        client.stopListening()
+        if state.status == .idle || state.status == .awake { state.status = .muted }
+    }
+
     private func accumulate(_ samples: [Float]) {
         pendingSamples.append(contentsOf: samples)
         while pendingSamples.count >= chunkSize {
@@ -202,10 +268,12 @@ final class MikuController {
         pendingSamples.removeAll()
     }
 
-    /// The same microphone feeds two different destinations, never both at once.
+    /// The same microphone feeds three destinations, never more than one at once.
     private func sendAudio(_ chunk: [Float]) {
         if isDictating {
             client.sendDictationChunk(chunk)
+        } else if isListening {
+            client.sendListeningChunk(chunk)
         } else {
             client.sendMicChunk(chunk)
         }
@@ -220,10 +288,24 @@ final class MikuController {
         state.status = .thinking
     }
 
+    /// The one switch the user actually thinks about: is the microphone open.
+    /// Answer a pending action. The backend is the one that actually runs or drops it;
+    /// the app only carries the verdict and clears the card.
+    func responderConfirmacion(_ confirmacion: ConfirmacionPendiente, permitir: Bool) {
+        client.sendConfirmacion(id: confirmacion.id, permitir: permitir)
+        if state.confirmacion?.id == confirmacion.id { state.confirmacion = nil }
+        state.log(permitir ? "Permitiste: \(confirmacion.comando)" : "Denegaste: \(confirmacion.comando)")
+    }
+
     func setListening(_ enabled: Bool) {
         state.listeningEnabled = enabled
-        if !enabled, isTalking { endTalking() }
-        if !enabled, isDictating { stopDictation() }
+        if enabled {
+            startListening()
+            return
+        }
+        if isListening { stopListening() }
+        if isTalking { endTalking() }
+        if isDictating { stopDictation() }
         if state.status != .disconnected, state.status != .thinking, state.status != .speaking {
             state.status = restingStatus
         }

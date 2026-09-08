@@ -10,6 +10,8 @@
     <string>com.yokrust.miku</string>
     <key>CFBundleExecutable</key>
     <string>Miku</string>
+    <key>CFBundleIconFile</key>
+    <string>Miku</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -23,6 +25,10 @@
     <true/>
     <key>NSMicrophoneUsageDescription</key>
     <string>Miku necesita el micrófono para oírte cuando le hablas.</string>
+    <!-- Geist e IBM Plex Mono viajan dentro del .app: al dejar SF Pro,
+         las fuentes son parte del producto, no del sistema. -->
+    <key>ATSApplicationFontsPath</key>
+    <string>Fonts</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>
